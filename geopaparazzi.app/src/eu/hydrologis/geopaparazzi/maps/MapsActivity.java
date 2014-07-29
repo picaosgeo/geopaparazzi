@@ -113,6 +113,7 @@ import eu.geopaparazzi.library.util.activities.GeocodeActivity;
 import eu.geopaparazzi.library.util.activities.InsertCoordActivity;
 import eu.geopaparazzi.library.util.debug.Debug;
 import eu.geopaparazzi.mapsforge.mapsdirmanager.MapsDirManager;
+import eu.geopaparazzi.mapsforge.mapsdirmanager.sourcesview.SourcesTreeListActivity;
 import eu.geopaparazzi.spatialite.database.spatial.SpatialDatabasesManager;
 import eu.geopaparazzi.spatialite.database.spatial.activities.DataListActivity;
 import eu.geopaparazzi.spatialite.database.spatial.activities.EditableLayersListActivity;
@@ -147,8 +148,9 @@ public class MapsActivity extends MapActivity implements OnTouchListener, OnClic
      */
     public static final int FORMUPDATE_RETURN_CODE = 669;
     private final int CONTACT_RETURN_CODE = 670;
-    // private static final int MAPSDIR_FILETREE = 777;
+    private static final int MAPSDIR_FILETREE = 777;
 
+    private final int MENU_TILESOURCES = 0;
     private final int MENU_GPSDATA = 1;
     private final int MENU_DATA = 2;
     private final int MENU_CENTER_ON_GPS = 3;
@@ -228,6 +230,10 @@ public class MapsActivity extends MapActivity implements OnTouchListener, OnClic
         // register for battery updates
         registerReceiver(batteryReceiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
 
+        loadView();
+    }
+
+    private void loadView() {
         preferences = PreferenceManager.getDefaultSharedPreferences(this);
 
         // mj10777: .mbtiles,.map and .mapurl files may know their bounds and desired center point
@@ -260,7 +266,7 @@ public class MapsActivity extends MapActivity implements OnTouchListener, OnClic
         minZoomLevel = mapsDirManager.getMinZoom();
         maxZoomLevel = mapsDirManager.getMaxZoom();
 
-        MapScaleBar mapScaleBar = this.mapView.getMapScaleBar();
+        MapScaleBar mapScaleBar = mapView.getMapScaleBar();
 
         boolean doImperial = preferences.getBoolean(Constants.PREFS_KEY_IMPERIAL, false);
         mapScaleBar.setImperialUnits(doImperial);
@@ -284,16 +290,8 @@ public class MapsActivity extends MapActivity implements OnTouchListener, OnClic
         setTextScale();
 
         final RelativeLayout rl = (RelativeLayout) findViewById(R.id.innerlayout);
-        rl.addView(mapView, new RelativeLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
+        rl.addView(mapView, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
 
-        int zoomInLevel = (int) mapCenterLocation[2] + 1;
-        if (zoomInLevel > maxZoomLevel) {
-            zoomInLevel = maxZoomLevel;
-        }
-        int zoomOutLevel = (int) mapCenterLocation[2] - 1;
-        if (zoomOutLevel < minZoomLevel) {
-            zoomOutLevel = minZoomLevel;
-        }
         Button zoomInButton = (Button) findViewById(R.id.zoomin);
         zoomInButton.setOnClickListener(this);
 
@@ -329,7 +327,7 @@ public class MapsActivity extends MapActivity implements OnTouchListener, OnClic
         try {
             handleOsmSliderView();
         } catch (Exception e) {
-            e.printStackTrace();
+            GPLog.error(this, null, e);
         }
         saveCenterPref();
 
@@ -350,6 +348,7 @@ public class MapsActivity extends MapActivity implements OnTouchListener, OnClic
             setLeftButtoonsEnablement(true);
         }
     }
+
     @Override
     protected void onPause() {
         Utilities.dismissProgressDialog(syncProgressDialog);
@@ -711,6 +710,7 @@ public class MapsActivity extends MapActivity implements OnTouchListener, OnClic
     @Override
     public void onCreateContextMenu( ContextMenu menu, View v, ContextMenuInfo menuInfo ) {
         super.onCreateContextMenu(menu, v, menuInfo);
+        menu.add(Menu.NONE, MENU_TILESOURCES, 0, "Tile sources").setIcon(android.R.drawable.ic_menu_compass);
         menu.add(Menu.NONE, MENU_GPSDATA, 1, R.string.mainmenu_gpsdataselect).setIcon(android.R.drawable.ic_menu_compass);
         menu.add(Menu.NONE, MENU_DATA, 2, R.string.base_maps).setIcon(android.R.drawable.ic_menu_compass);
         menu.add(Menu.NONE, MENU_SCALE_ID, 3, R.string.mapsactivity_menu_toggle_scalebar).setIcon(R.drawable.ic_menu_scalebar);
@@ -735,11 +735,9 @@ public class MapsActivity extends MapActivity implements OnTouchListener, OnClic
 
     public boolean onContextItemSelected( MenuItem item ) {
         switch( item.getItemId() ) {
-        // THIS IS CURRENTLY DISABLED
-        //
-        // case MENU_TILE_SOURCE_ID:
-        // startMapsDirTreeViewList();
-        // return true;
+        case MENU_TILESOURCES:
+            startActivityForResult(new Intent(this, SourcesTreeListActivity.class), MAPSDIR_FILETREE);
+            return true;
         case MENU_GPSDATA:
             Intent gpsDatalistIntent = new Intent(this, GpsDataListActivity.class);
             startActivityForResult(gpsDatalistIntent, GPSDATAPROPERTIES_RETURN_CODE);
@@ -797,30 +795,6 @@ public class MapsActivity extends MapActivity implements OnTouchListener, OnClic
         }
         return super.onContextItemSelected(item);
     }
-    // THIS IS CURRENTLY DISABLED
-    //
-    // /**
-    // * Start the Dialog to select a map
-    // *
-    // * <p>
-    // * MapDirManager creates a static-list of maps and sends it to the MapsDirTreeViewList class
-    // * - when first called this list will build a diretory/file list AND a map-type/Diretory/File
-    // list
-    // * - once created, this list will be retained during the Application
-    // * - the user can switch from a sorted list as Directory/File OR Map-Type/Diretory/File view
-    // * </p>
-    // * result will be sent to MapDirManager and saved there and stored to preferences
-    // * - when the MapView is created, this stroed value will be read and loaded
-    // */
-    // private void startMapsDirTreeViewList() {
-    // try {
-    // startActivityForResult(new Intent(this, MapsDirTreeViewList.class), MAPSDIR_FILETREE);
-    // } catch (Exception e) {
-    // GPLog.androidLog(4,
-    // "GeoPaparazziActivity -E-> failed[startActivity(new Intent(this,MapsDirTreeViewList.class));]",
-    // e);
-    // }
-    // }
 
     private void sendData() throws IOException {
         float[] nswe = getMapWorldBounds();
@@ -964,7 +938,8 @@ public class MapsActivity extends MapActivity implements OnTouchListener, OnClic
             GPLog.addLogEntry(this, "Activity returned"); //$NON-NLS-1$
         super.onActivityResult(requestCode, resultCode, data);
         switch( requestCode ) {
-
+            case  MAPSDIR_FILETREE:
+                loadView();
         // THIS IS CURRENTLY DISABLED
         //
         // case MAPSDIR_FILETREE: {
