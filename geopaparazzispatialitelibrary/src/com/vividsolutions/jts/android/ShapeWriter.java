@@ -85,7 +85,7 @@ public class ShapeWriter {
     /**
      * The point shape factory used by default.
      */
-    public static final PointShapeFactory DEFAULT_POINT_FACTORY = new PointShapeFactory.Square(3.0);
+    public static final PointShapeFactory DEFAULT_POINT_FACTORY = new PointShapeFactory.Circle(30.0);
 
     private PointTransformation pointTransformer = DEFAULT_POINT_TRANSFORMATION;
     private PointShapeFactory pointFactory = DEFAULT_POINT_FACTORY;
@@ -198,7 +198,7 @@ public class ShapeWriter {
      * and PointShapeFactory (if relevant).
      * <p>
      * Note that Shapes do not
-     * preserve information about which elements in heterogeneous collections
+     * preserve information fragment_about which elements in heterogeneous collections
      * are 1D and which are 2D.
      * For example, a GeometryCollection containing a ring and a
      * disk will render as two disks if Graphics.fill is used, 

@@ -17,13 +17,11 @@
 */
 package eu.geopaparazzi.spatialite.database.spatial.core.databasehandlers;
 
-import android.content.Context;
 import android.graphics.DashPathEffect;
 import android.graphics.Paint;
 import android.graphics.Paint.Cap;
 import android.graphics.Paint.Join;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -31,12 +29,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import eu.geopaparazzi.library.GPApplication;
 import eu.geopaparazzi.library.database.GPLog;
-import eu.geopaparazzi.library.util.ColorUtilities;
+import eu.geopaparazzi.library.style.ColorUtilities;
 import eu.geopaparazzi.library.util.LibraryConstants;
-import eu.geopaparazzi.library.util.ResourcesManager;
-import eu.geopaparazzi.spatialite.database.spatial.core.enums.SpatialDataType;
+import eu.geopaparazzi.library.util.types.ESpatialDataSources;
 import eu.geopaparazzi.spatialite.database.spatial.core.enums.TableTypes;
 import eu.geopaparazzi.spatialite.database.spatial.core.tables.AbstractSpatialTable;
 import eu.geopaparazzi.spatialite.database.spatial.core.tables.SpatialRasterTable;
@@ -49,7 +45,7 @@ import eu.geopaparazzi.spatialite.database.spatial.core.daos.GeopaparazziDatabas
 import eu.geopaparazzi.spatialite.database.spatial.util.comparators.OrderComparator;
 import eu.geopaparazzi.spatialite.database.spatial.core.enums.SpatialiteDatabaseType;
 import eu.geopaparazzi.spatialite.database.spatial.util.SpatialiteUtilities;
-import eu.geopaparazzi.spatialite.database.spatial.util.Style;
+import eu.geopaparazzi.library.style.Style;
 import jsqlite.Database;
 import jsqlite.Exception;
 import jsqlite.Stmt;
@@ -88,6 +84,8 @@ public class SpatialiteDatabaseHandler extends AbstractSpatialDatabaseHandler {
     // List of all SpatialView of Database [view_name,view_data] - that have errors
     private HashMap<String, String> spatialVectorMapErrors = new HashMap<String, String>();
 
+    private volatile boolean isOpen = false;
+
     /**
      * Constructor.
      *
@@ -96,32 +94,27 @@ public class SpatialiteDatabaseHandler extends AbstractSpatialDatabaseHandler {
      */
     public SpatialiteDatabaseHandler(String dbPath) throws IOException {
         super(dbPath);
+        open();
+    }
+
+    @Override
+    public boolean isOpen() {
+        return isOpen;
+    }
+
+    @Override
+    public void open() {
         try {
-            try {
-                Context context = GPApplication.getInstance();
-                ResourcesManager resourcesManager = ResourcesManager.getInstance(context);
-                File mapsDir = resourcesManager.getMapsDir();
-                String mapsPath = mapsDir.getAbsolutePath();
-                if (databasePath.startsWith(mapsPath)) {
-                    // this should always be true
-                    String relativePath = databasePath.substring(mapsPath.length());
-                    StringBuilder sb = new StringBuilder();
-                    if (relativePath.startsWith(File.separator)) {
-                        relativePath = relativePath.substring(1);
-                    }
-                    sb.append(relativePath);
-                    uniqueDbName4DataProperties = sb.toString();
-                }
-            } catch (java.lang.Exception e) {
-                GPLog.androidLog(4, "SpatialiteDatabaseHandler[" + databaseFile.getAbsolutePath() + "]", e);
-            }
+            uniqueDbName4DataProperties = databasePath;
             dbJava = new jsqlite.Database();
             try {
                 dbJava.open(databasePath, jsqlite.Constants.SQLITE_OPEN_READWRITE | jsqlite.Constants.SQLITE_OPEN_CREATE);
+                isOpen = true;
                 isDatabaseValid = true;
             } catch (Exception e) {
                 GPLog.error(this, "Database marked as invalid: " + databasePath, e);
                 isDatabaseValid = false;
+                isOpen = false;
                 GPLog.androidLog(4, "SpatialiteDatabaseHandler[" + databaseFile.getAbsolutePath() + "].open has failed", e);
             }
             if (isValid()) {
@@ -131,6 +124,7 @@ public class SpatialiteDatabaseHandler extends AbstractSpatialDatabaseHandler {
                 } catch (Exception e) {
                     GPLog.error(this, null, e);
                     isDatabaseValid = false;
+                    isOpen = false;
                 }
                 switch (databaseType) {
              /*
@@ -143,8 +137,10 @@ public class SpatialiteDatabaseHandler extends AbstractSpatialDatabaseHandler {
                     case SPATIALITE4:
                         isDatabaseValid = true;
                         break;
-                    default:
+                    default: {
                         isDatabaseValid = false;
+                        isOpen = false;
+                    }
                 }
             }
             if (!isValid()) {
@@ -153,12 +149,8 @@ public class SpatialiteDatabaseHandler extends AbstractSpatialDatabaseHandler {
                 checkAndUpdatePropertiesUniqueNames();
             }
         } catch (Exception e) {
-            GPLog.error(this,  "SpatialiteDatabaseHandler[" + databaseFile.getAbsolutePath() + "]", e);
+            GPLog.error(this, "SpatialiteDatabaseHandler[" + databaseFile.getAbsolutePath() + "]", e);
         }
-    }
-
-    @Override
-    public void open() {
     }
 
     /**
@@ -300,23 +292,15 @@ public class SpatialiteDatabaseHandler extends AbstractSpatialDatabaseHandler {
         paint.setAlpha((int) alpha);
         paint.setStrokeWidth(style.width);
 
-        String dashPattern = style.dashPattern;
-        if (dashPattern.trim().length() > 0) {
-            String[] split = dashPattern.split(",");
-            if (split.length > 1) {
-                float[] dash = new float[split.length];
-                for (int i = 0; i < split.length; i++) {
-                    try {
-                        float tmpDash = Float.parseFloat(split[i].trim());
-                        dash[i] = tmpDash;
-                    } catch (NumberFormatException e) {
-                        // ignore and set default
-                        dash = new float[]{20f, 10f};
-                        break;
-                    }
-                }
-                paint.setPathEffect(new DashPathEffect(dash, 0));
+        try {
+            float[] shiftAndDash = Style.dashFromString(style.dashPattern);
+            if (shiftAndDash != null) {
+                float[] dash = Style.getDashOnly(shiftAndDash);
+                if (dash.length > 1)
+                    paint.setPathEffect(new DashPathEffect(dash, Style.getDashShift(shiftAndDash)));
             }
+        } catch (java.lang.Exception e) {
+            GPLog.error(this, "Error on dash creation: " + style.dashPattern, e);
         }
 
         return paint;
@@ -388,6 +372,7 @@ public class SpatialiteDatabaseHandler extends AbstractSpatialDatabaseHandler {
     }
 
     public void close() throws Exception {
+        isOpen = false;
         if (dbJava != null) {
             dbJava.close();
         }
@@ -728,7 +713,7 @@ public class SpatialiteDatabaseHandler extends AbstractSpatialDatabaseHandler {
                             centerCoordinate[1] = boundsCoordinates[1] + (boundsCoordinates[3] - boundsCoordinates[1]) / 2;
                         }
                         checkAndAdaptDatabaseBounds(boundsCoordinates, null);
-                        if (layerType.equals(SpatialDataType.RASTERLITE2.getTypeName())) {
+                        if (layerType.equals(ESpatialDataSources.RASTERLITE2.getTypeName())) {
                             // s_ROWID_PK == title [Berlin Straube Postgrenzen] - needed
                             // s_view_read_only == abstract [1890 - 1:17777] - needed
                             // s_geometry_type == pixel_type [RGB] - not needed
@@ -869,7 +854,6 @@ public class SpatialiteDatabaseHandler extends AbstractSpatialDatabaseHandler {
                 Collections.sort(vectorTableList, orderComparator);
             }
         }
-        return;
     }
 
     /**
