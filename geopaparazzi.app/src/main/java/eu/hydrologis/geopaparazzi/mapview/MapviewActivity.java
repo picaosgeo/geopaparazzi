@@ -488,6 +488,8 @@ public class MapviewActivity extends MapActivity implements OnTouchListener, OnC
 
             /* gps notes */
             if (notesVisible) {
+                notesDrawable.setBounds(notesDrawable.getIntrinsicWidth() , notesDrawable.getIntrinsicHeight() / -2, notesDrawable.getIntrinsicWidth() / 2,
+                        notesDrawable.getIntrinsicHeight() / 2);
                 Drawable newNotesMarker = ArrayGeopaparazziOverlay.boundCenter(notesDrawable);
                 List<OverlayItem> noteOverlaysList = DaoNotes.getNoteOverlaysList(newNotesMarker);
                 mDataOverlay.addItems(noteOverlaysList);

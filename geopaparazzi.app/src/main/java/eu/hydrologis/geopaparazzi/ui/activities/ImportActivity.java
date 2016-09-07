@@ -53,8 +53,10 @@ import eu.geopaparazzi.library.util.LibraryConstants;
 import eu.geopaparazzi.library.util.TextRunnable;
 import eu.geopaparazzi.library.util.TimeUtilities;
 import eu.geopaparazzi.library.util.Utilities;
+import eu.geopaparazzi.library.webproject.WebDataListActivity;
 import eu.geopaparazzi.library.webproject.WebProjectsListActivity;
 import eu.geopaparazzi.mapsforge.BaseMapSourcesManager;
+import eu.geopaparazzi.spatialite.database.spatial.SpatialiteSourcesManager;
 import eu.hydrologis.geopaparazzi.R;
 import eu.hydrologis.geopaparazzi.ui.activities.tantomapurls.TantoMapurlsActivity;
 import eu.hydrologis.geopaparazzi.database.DaoBookmarks;
@@ -127,6 +129,34 @@ public class ImportActivity extends AppCompatActivity implements IActivityStarte
                 webImportIntent.putExtra(LibraryConstants.PREFS_KEY_USER, user);
                 webImportIntent.putExtra(LibraryConstants.PREFS_KEY_PWD, passwd);
                 startActivity(webImportIntent);
+            }
+        });
+
+        Button cloudSpatialiteImportButton = (Button) findViewById(R.id.cloudSpatialiteImportButton);
+        cloudSpatialiteImportButton.setOnClickListener(new Button.OnClickListener() {
+            public void onClick(View v) {
+                final ImportActivity context = ImportActivity.this;
+
+                if (!NetworkUtilities.isNetworkAvailable(context)) {
+                    GPDialogs.infoDialog(context, context.getString(R.string.available_only_with_network), null);
+                    return;
+                }
+
+                SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(ImportActivity.this);
+                final String user = preferences.getString(Constants.PREF_KEY_USER, "geopaparazziuser"); //$NON-NLS-1$
+                final String passwd = preferences.getString(Constants.PREF_KEY_PWD, "geopaparazzipwd"); //$NON-NLS-1$
+                final String server = preferences.getString(Constants.PREF_KEY_SERVER, ""); //$NON-NLS-1$
+
+                if (server.length() == 0) {
+                    GPDialogs.infoDialog(context, getString(R.string.error_set_cloud_settings), null);
+                    return;
+                }
+
+                Intent webImportIntent = new Intent(ImportActivity.this, WebDataListActivity.class);
+                webImportIntent.putExtra(LibraryConstants.PREFS_KEY_URL, server);
+                webImportIntent.putExtra(LibraryConstants.PREFS_KEY_USER, user);
+                webImportIntent.putExtra(LibraryConstants.PREFS_KEY_PWD, passwd);
+                startActivityForResult(webImportIntent, WebDataListActivity.DOWNLOADDATA_RETURN_CODE);
             }
         });
 
@@ -218,6 +248,20 @@ public class ImportActivity extends AppCompatActivity implements IActivityStarte
                             Utilities.setLastFilePath(this, filePath);
                             GpxImportDialogFragment gpxImportDialogFragment = GpxImportDialogFragment.newInstance(file.getAbsolutePath());
                             gpxImportDialogFragment.show(getSupportFragmentManager(), "gpx import");
+                        }
+                    } catch (Exception e) {
+                        GPDialogs.errorDialog(this, e, null);
+                    }
+                }
+                break;
+            }
+            case (WebDataListActivity.DOWNLOADDATA_RETURN_CODE): {
+                if (resultCode == Activity.RESULT_OK) {
+                    try {
+                        String filePath = data.getStringExtra(LibraryConstants.DATABASE_ID);
+                        File file = new File(filePath);
+                        if (file.exists()) {
+                            SpatialiteSourcesManager.INSTANCE.addSpatialiteMapFromFile(file);
                         }
                     } catch (Exception e) {
                         GPDialogs.errorDialog(this, e, null);
