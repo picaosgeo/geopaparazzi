@@ -1,19 +1,13 @@
-import com.android.build.gradle.tasks.PackageApplication
-
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 23
-    buildToolsVersion '23.0.2'
-
-
+    compileSdkVersion 25
+    buildToolsVersion '25.0.3'
 
     buildTypes {
         release {
             minifyEnabled false
-//            proguardFiles getDefaultProguardFile('proguard-android.txt'),
-//                    'proguard-rules.pro'
-//            signingConfig signingConfigs.config
+            //proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
             applicationVariants.all { variant ->
                 variant.outputs.each { output ->
                     def file = output.outputFile
@@ -22,11 +16,7 @@ android {
                 }
             }
         }
-        debug {
-            debuggable true
-        }
     }
-
     signingConfigs {
         config {
             def Properties props = new Properties()
@@ -50,60 +40,37 @@ android {
         }
     }
 
-    defaultConfig {
-        applicationId "eu.hydrologis.geopaparazzi"
-        minSdkVersion 18
-        targetSdkVersion 23
-        versionCode 78
-        versionName "5.1.2"
-        signingConfig signingConfigs.config
-        multiDexEnabled true
-    }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_7
         targetCompatibility JavaVersion.VERSION_1_7
     }
-    sourceSets {
-        main {
-            jniLibs.srcDir new File(buildDir, 'native-libs')
-        }
-    }
-    productFlavors {
-    }
-
     lintOptions {
         checkReleaseBuilds false
         abortOnError false
+    }
+
+    defaultConfig {
+        applicationId "eu.hydrologis.geopaparazzi"
+        minSdkVersion 18
+        targetSdkVersion 25
+        versionCode 82
+        versionName "5.4.0"
+        signingConfig signingConfigs.config
+        multiDexEnabled true
+
     }
 }
 
 dependencies {
     compile fileTree(include: ['*.jar'], dir: 'libs')
     testCompile 'junit:junit:4.12'
-    compile 'com.android.support:appcompat-v7:23.4.0'
-    compile 'com.android.support:design:23.4.0'
-    compile 'com.android.support:preference-v7:23.4.0'
-    compile project(':geopaparazzilibrary')
-    compile project(':geopaparazzispatialitelibrary')
-    compile project(':geopaparazzimapsforge')
-    compile project(':geopaparazzimarkerslib')
-    //    compile project(':wms_nww')
-    compile project(':wms_nww')
+    compile 'com.android.support:appcompat-v7:25.3.1'
+    compile 'com.android.support:design:25.3.1'
+    compile 'com.android.support:preference-v7:25.3.1'
+    compile project(':geopaparazzi_core')
+    compile project(':geopaparazzi_default_import_plugins')
+    compile project(':geopaparazzi_default_export_plugins')
+    compile project(':geopaparazzi_pdf_export_plugins')
+    compile project(':geopaparazzi_projects_import_plugins')
+    compile project(':geopaparazzi_projects_export_plugins')
 }
-
-task copyNativeLibs(type: Copy) {
-    from(new File(project(':geopaparazzispatialitelibrary').projectDir, 'jniLibs')) {
-        include 'armeabi/libjsqlite.so'
-        include 'armeabi-v7a/libjsqlite.so'
-        include 'x86/libjsqlite.so'
-    }
-    into new File(buildDir, 'native-libs')
-}
-tasks.withType(JavaCompile) { compileTask -> compileTask.dependsOn copyNativeLibs }
-clean.dependsOn 'cleanCopyNativeLibs'
-
-
-
-
-
-

@@ -41,6 +41,7 @@ import android.os.AsyncTask;
 import android.os.Looper;
 import android.os.StatFs;
 import android.preference.PreferenceManager;
+import android.support.v4.content.FileProvider;
 import android.telephony.TelephonyManager;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -67,6 +68,8 @@ import eu.geopaparazzi.library.database.GPLog;
  */
 public class Utilities {
 
+    public static final String GEOPAPARAZZI_LIBRARY_FILEPROVIDER_PLUS = ".library.fileprovider";
+
     public static String getLastFilePath(Context context) throws Exception {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
         return preferences.getString(LibraryConstants.PREFS_KEY_LASTPATH, ResourcesManager.getInstance(context).getSdcardDir().getAbsolutePath());
@@ -75,14 +78,21 @@ public class Utilities {
     public static void setLastFilePath(Context context, String lastPath) throws Exception {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
         File file = new File(lastPath);
-        if (file.exists()){
-            if (!file.isDirectory()){
+        if (file.exists()) {
+            if (!file.isDirectory()) {
                 file = file.getParentFile();
             }
         }
         SharedPreferences.Editor editor = preferences.edit();
         editor.putString(LibraryConstants.PREFS_KEY_LASTPATH, file.getAbsolutePath());
         editor.apply();
+    }
+
+    public static Uri getFileUriInApplicationFolder(Context context, File imageFile) throws Exception {
+        String packageName = ResourcesManager.getInstance(context).getPackageName();
+
+        Uri outputFileUri = FileProvider.getUriForFile(context, packageName + GEOPAPARAZZI_LIBRARY_FILEPROVIDER_PLUS, imageFile);
+        return outputFileUri;
     }
 
 

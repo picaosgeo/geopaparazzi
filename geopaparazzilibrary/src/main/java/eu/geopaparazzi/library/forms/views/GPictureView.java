@@ -42,13 +42,14 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import eu.geopaparazzi.library.R;
-import eu.geopaparazzi.library.camera.CameraActivity;
+import eu.geopaparazzi.library.camera.CameraNoteActivity;
 import eu.geopaparazzi.library.database.DefaultHelperClasses;
 import eu.geopaparazzi.library.database.GPLog;
 import eu.geopaparazzi.library.database.IImagesDbHelper;
 import eu.geopaparazzi.library.database.Image;
 import eu.geopaparazzi.library.forms.FormDetailFragment;
 import eu.geopaparazzi.library.images.ImageUtilities;
+import eu.geopaparazzi.library.plugin.style.StyleHelper;
 import eu.geopaparazzi.library.util.Compat;
 import eu.geopaparazzi.library.util.LibraryConstants;
 import eu.geopaparazzi.library.util.PositionUtilities;
@@ -121,8 +122,7 @@ public class GPictureView extends View implements GView {
         textLayout.addView(textView);
 
         final Button button = new Button(activity);
-        button.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
-        button.setPadding(15, 5, 15, 5);
+        StyleHelper.styleButton(activity, button);
         button.setText(R.string.take_picture);
         textLayout.addView(button);
 
@@ -132,7 +132,7 @@ public class GPictureView extends View implements GView {
                 double[] gpsLocation = PositionUtilities.getGpsLocationFromPreferences(preferences);
 
                 String imageName = ImageUtilities.getCameraImageName(null);
-                Intent cameraIntent = new Intent(activity, CameraActivity.class);
+                Intent cameraIntent = new Intent(activity, CameraNoteActivity.class);
                 cameraIntent.putExtra(LibraryConstants.PREFS_KEY_CAMERA_IMAGENAME, imageName);
                 cameraIntent.putExtra(LibraryConstants.DATABASE_ID, noteId);
                 if (gpsLocation != null) {
@@ -206,7 +206,7 @@ public class GPictureView extends View implements GView {
                         /*
                          * open in markers to edit it
                          */
-                        // MarkersUtilities.launchOnImage(context, image);
+                        // SketchUtilities.launchOnImage(context, image);
                         try {
                             Intent intent = new Intent();
                             intent.setAction(Intent.ACTION_VIEW);

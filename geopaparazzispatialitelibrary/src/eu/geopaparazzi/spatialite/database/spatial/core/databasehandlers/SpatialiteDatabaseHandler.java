@@ -69,10 +69,6 @@ public class SpatialiteDatabaseHandler extends AbstractSpatialDatabaseHandler {
     private String uniqueDbName4DataProperties = "";
 
     private Database dbJava;
-
-    private HashMap<String, Paint> fillPaints = new HashMap<String, Paint>();
-    private HashMap<String, Paint> strokePaints = new HashMap<String, Paint>();
-
     private List<SpatialVectorTable> vectorTableList;
     private List<SpatialRasterTable> rasterTableList;
 
@@ -248,65 +244,6 @@ public class SpatialiteDatabaseHandler extends AbstractSpatialDatabaseHandler {
     }
 
     /**
-     * Get the fill {@link Paint} for a given style.
-     * <p/>
-     * <p>Paints are cached and reused.</p>
-     *
-     * @param style the {@link Style} to use.
-     * @return the paint.
-     */
-    public Paint getFillPaint4Style(Style style) {
-        Paint paint = fillPaints.get(style.name);
-        if (paint == null) {
-            paint = new Paint();
-            fillPaints.put(style.name, paint);
-        }
-        paint.setAntiAlias(true);
-        paint.setStyle(Paint.Style.FILL);
-        paint.setColor(ColorUtilities.toColor(style.fillcolor));
-        float alpha = style.fillalpha * 255f;
-        paint.setAlpha((int) alpha);
-        return paint;
-    }
-
-    /**
-     * Get the stroke {@link Paint} for a given style.
-     * <p/>
-     * <p>Paints are cached and reused.</p>
-     *
-     * @param style the {@link Style} to use.
-     * @return the paint.
-     */
-    public Paint getStrokePaint4Style(Style style) {
-        Paint paint = strokePaints.get(style.name);
-        if (paint == null) {
-            paint = new Paint();
-            strokePaints.put(style.name, paint);
-        }
-        paint.setStyle(Paint.Style.STROKE);
-        paint.setAntiAlias(true);
-        paint.setStrokeCap(Cap.ROUND);
-        paint.setStrokeJoin(Join.ROUND);
-        paint.setColor(ColorUtilities.toColor(style.strokecolor));
-        float alpha = style.strokealpha * 255f;
-        paint.setAlpha((int) alpha);
-        paint.setStrokeWidth(style.width);
-
-        try {
-            float[] shiftAndDash = Style.dashFromString(style.dashPattern);
-            if (shiftAndDash != null) {
-                float[] dash = Style.getDashOnly(shiftAndDash);
-                if (dash.length > 1)
-                    paint.setPathEffect(new DashPathEffect(dash, Style.getDashShift(shiftAndDash)));
-            }
-        } catch (java.lang.Exception e) {
-            GPLog.error(this, "Error on dash creation: " + style.dashPattern, e);
-        }
-
-        return paint;
-    }
-
-    /**
      * Retrieve list of WKB geometries from the given table in the given bounds.
      *
      * @param destSrid the destination srid.
@@ -372,9 +309,11 @@ public class SpatialiteDatabaseHandler extends AbstractSpatialDatabaseHandler {
     }
 
     public void close() throws Exception {
-        isOpen = false;
-        if (dbJava != null) {
-            dbJava.close();
+        if (isOpen) {
+            isOpen = false;
+            if (dbJava != null) {
+                dbJava.close();
+            }
         }
     }
 
@@ -440,8 +379,8 @@ public class SpatialiteDatabaseHandler extends AbstractSpatialDatabaseHandler {
         StringBuilder sbQ = new StringBuilder();
         sbQ.append("SELECT ");
         sbQ.append(fieldNamesList);
-        sbQ.append(" FROM ").append(spatialTable.getTableName());
-        sbQ.append(" WHERE ST_Intersects(");
+        sbQ.append(" FROM \"").append(spatialTable.getTableName());
+        sbQ.append("\" WHERE ST_Intersects(");
         if (doTransform)
             sbQ.append("ST_Transform(");
         sbQ.append("BuildMBR(");

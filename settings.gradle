@@ -1,3 +1,15 @@
-include ':geopaparazzi.app', ':geopaparazzispatialitelibrary', ':geopaparazzimapsforge', ':geopaparazzilibrary', ':geopaparazzimarkerslib'
+include ':geopaparazzi.app'
+include ':geopaparazzi_core'
+include ':geopaparazzispatialitelibrary', ':geopaparazzimapsforge', ':geopaparazzilibrary'
 include ':wms_nww'
-project(':wms_nww').projectDir=new File('../wms_nww/')
+include ':geopaparazzi_acrylicpaint'
+include ':geopaparazzi_default_import_plugins'
+project(':geopaparazzi_default_import_plugins').projectDir = new File('plugins/geopaparazzi_default_import_plugins/')
+include ':geopaparazzi_default_export_plugins'
+project(':geopaparazzi_default_export_plugins').projectDir = new File('plugins/geopaparazzi_default_export_plugins/')
+include ':geopaparazzi_pdf_export_plugins'
+project(':geopaparazzi_pdf_export_plugins').projectDir = new File('plugins/geopaparazzi_pdf_export_plugins/')
+include ':geopaparazzi_projects_import_plugins'
+project(':geopaparazzi_projects_import_plugins').projectDir = new File('plugins/geopaparazzi_projects_import_plugins/')
+include ':geopaparazzi_projects_export_plugins'
+project(':geopaparazzi_projects_export_plugins').projectDir = new File('plugins/geopaparazzi_projects_export_plugins/')

@@ -25,7 +25,6 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.http.AndroidHttpClient;
 import android.util.Base64;
-import android.util.Log;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -44,24 +43,33 @@ import org.apache.http.params.CoreProtocolPNames;
 
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.UnsupportedEncodingException;
+import java.net.CookieHandler;
+import java.net.CookieManager;
+import java.net.CookiePolicy;
+import java.net.CookieStore;
+import java.net.HttpCookie;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
-import javax.net.ssl.HttpsURLConnection;
-
 import eu.geopaparazzi.library.R;
 import eu.geopaparazzi.library.database.GPLog;
+import eu.geopaparazzi.library.util.GPDialogs;
 import eu.geopaparazzi.library.util.TimeUtilities;
 
 /**
@@ -100,24 +108,23 @@ public class NetworkUtilities {
     }
 
     private static HttpURLConnection makeNewConnection(String fileUrl) throws Exception {
-        // boolean doHttps =
-        // CorePlugin.getDefault().getPreferenceStore().getBoolean(KeyManager.keys().getHttpConnectionTypeKey());
-        if (fileUrl.startsWith("https")) {
-            URL url = new URL(fileUrl);
-            HttpsURLConnection urlC = (HttpsURLConnection) url.openConnection();
-            return urlC;
-        } else if (fileUrl.startsWith("http")) {
-            URL url = new URL(fileUrl);
-            HttpURLConnection urlC = (HttpURLConnection) url.openConnection();
-            return urlC;
-        } else {
-            // try to add http
-            URL url = new URL("http://" + fileUrl);
-            HttpURLConnection urlC = (HttpURLConnection) url.openConnection();
-            return urlC;
-        }
+        URL url = new URL(normalizeUrl(fileUrl));
+        return (HttpURLConnection) url.openConnection();
     }
 
+    private static String normalizeUrl(String url) {
+        return normalizeUrl(url, false);
+    }
+
+    private static String normalizeUrl(String url, boolean addSlash) {
+        if ( (!url.startsWith("http://")) && (!url.startsWith("https://"))) {
+            url = "http://" + url;
+        }
+        if (addSlash && !url.endsWith(SLASH)) {
+            url = url + SLASH;
+        }
+        return url;
+    }
     /**
      * Sends an HTTP GET request to a url
      *
@@ -329,87 +336,6 @@ public class NetworkUtilities {
     }
 
     /**
-     * Send a file via HTTP POST with basic authentication.
-     *
-     * @param context  the context to use.
-     * @param urlStr   the server url to POST to.
-     * @param file     the file to send.
-     * @param user     the user or <code>null</code>.
-     * @param password the password or <code>null</code>.
-     * @return the return string from the POST.
-     * @throws Exception if something goes wrong.
-     */
-    public static String sendFilePost(Context context, String urlStr, File file, String user, String password) throws Exception {
-        BufferedOutputStream wr = null;
-        FileInputStream fis = null;
-        HttpURLConnection conn = null;
-        try {
-            long fileSize = file.length();
-            fis = new FileInputStream(file);
-            // Authenticator.setDefault(new Authenticator(){
-            // protected PasswordAuthentication getPasswordAuthentication() {
-            // return new PasswordAuthentication("test", "test".toCharArray());
-            // }
-            // });
-            if (!urlStr.endsWith(SLASH)) {
-                urlStr = urlStr + SLASH;
-            }
-            urlStr = urlStr + "?name=" + file.getName();
-            conn = makeNewConnection(urlStr);
-            conn.setRequestMethod("POST");
-            conn.setDoOutput(true);
-            conn.setDoInput(true);
-//            conn.setChunkedStreamingMode(0);
-            conn.setUseCaches(true);
-
-            // conn.setRequestProperty("Accept-Encoding", "gzip ");
-            // conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-            conn.setRequestProperty("Content-Type", "application/octet-stream");
-            conn.setRequestProperty("Content-Length", "" + fileSize);
-            // conn.setRequestProperty("Connection", "Keep-Alive");
-
-            if (user != null && password != null && user.trim().length() > 0 && password.trim().length() > 0) {
-                conn.setRequestProperty("Authorization", getB64Auth(user, password));
-            }
-            conn.connect();
-
-            wr = new BufferedOutputStream(conn.getOutputStream());
-            long bufferSize = Math.min(fileSize, maxBufferSize);
-
-            if (GPLog.LOG)
-                GPLog.addLogEntry(TAG, "BUFFER USED: " + bufferSize);
-            byte[] buffer = new byte[(int) bufferSize];
-            int bytesRead = fis.read(buffer, 0, (int) bufferSize);
-            long totalBytesWritten = 0;
-            while (bytesRead > 0) {
-                wr.write(buffer, 0, (int) bufferSize);
-                totalBytesWritten = totalBytesWritten + bufferSize;
-                if (totalBytesWritten >= fileSize)
-                    break;
-
-                bufferSize = Math.min(fileSize - totalBytesWritten, maxBufferSize);
-                bytesRead = fis.read(buffer, 0, (int) bufferSize);
-            }
-            wr.flush();
-
-            int responseCode = conn.getResponseCode();
-            return getMessageForCode(context, responseCode,
-                    context.getResources().getString(R.string.file_upload_completed_properly));
-
-        } catch (Exception e) {
-            throw e;
-        } finally {
-            if (wr != null)
-                wr.close();
-            if (fis != null)
-                fis.close();
-            if (conn != null)
-                conn.disconnect();
-        }
-    }
-
-
-    /**
      * Get a default message for an HTTP code.
      *
      * @param context          the context to use.
@@ -488,7 +414,7 @@ public class NetworkUtilities {
         httpclient.getConnectionManager().shutdown();
     }
 
-    private static String getB64Auth(String login, String pass) {
+    public static String getB64Auth(String login, String pass) {
         String source = login + ":" + pass;
         String ret = "Basic " + Base64.encodeToString(source.getBytes(), Base64.URL_SAFE | Base64.NO_WRAP);
         return ret;
@@ -537,7 +463,7 @@ public class NetworkUtilities {
      * @throws Exception if something goes wrong.
      */
     public static String sendGetRequest(String urlStr, String requestParameters, String user, String password) throws Exception {
-        if (!urlStr.startsWith("http")) urlStr = "http://" + urlStr;
+        urlStr = normalizeUrl(urlStr);
         if (requestParameters != null && requestParameters.length() > 0) {
             urlStr += "?" + requestParameters;
         }
@@ -568,6 +494,85 @@ public class NetworkUtilities {
         return builder.toString();
     }
 
+    /**
+     * Send a file via HTTP POST with basic authentication.
+     *
+     * @param context  the context to use.
+     * @param urlStr   the server url to POST to.
+     * @param file     the file to send.
+     * @param user     the user or <code>null</code>.
+     * @param password the password or <code>null</code>.
+     * @return the return string from the POST.
+     * @throws Exception if something goes wrong.
+     */
+    public static String sendFilePost(Context context, String urlStr, File file, String user, String password) throws Exception {
+        BufferedOutputStream wr = null;
+        FileInputStream fis = null;
+        HttpURLConnection conn = null;
+        try {
+            long fileSize = file.length();
+            fis = new FileInputStream(file);
+            // Authenticator.setDefault(new Authenticator(){
+            // protected PasswordAuthentication getPasswordAuthentication() {
+            // return new PasswordAuthentication("test", "test".toCharArray());
+            // }
+            // });
+//            if (urlStr.endsWith(SLASH)) {
+//                urlStr = urlStr + SLASH;
+//            }
+            urlStr = urlStr + "?name=" + file.getName();
+            conn = makeNewConnection(urlStr);
+            conn.setRequestMethod("POST");
+            conn.setDoOutput(true);
+            conn.setDoInput(true);
+//            conn.setChunkedStreamingMode(0);
+            conn.setUseCaches(true);
+
+            // conn.setRequestProperty("Accept-Encoding", "gzip ");
+            // conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+            conn.setRequestProperty("Content-Type", "application/octet-stream");
+            conn.setRequestProperty("Content-Length", "" + fileSize);
+            // conn.setRequestProperty("Connection", "Keep-Alive");
+
+            if (user != null && password != null && user.trim().length() > 0 && password.trim().length() > 0) {
+                conn.setRequestProperty("Authorization", getB64Auth(user, password));
+            }
+            conn.connect();
+
+            wr = new BufferedOutputStream(conn.getOutputStream());
+            long bufferSize = Math.min(fileSize, maxBufferSize);
+
+            if (GPLog.LOG)
+                GPLog.addLogEntry(TAG, "BUFFER USED: " + bufferSize);
+            byte[] buffer = new byte[(int) bufferSize];
+            int bytesRead = fis.read(buffer, 0, (int) bufferSize);
+            long totalBytesWritten = 0;
+            while (bytesRead > 0) {
+                wr.write(buffer, 0, (int) bufferSize);
+                totalBytesWritten = totalBytesWritten + bufferSize;
+                if (totalBytesWritten >= fileSize)
+                    break;
+
+                bufferSize = Math.min(fileSize - totalBytesWritten, maxBufferSize);
+                bytesRead = fis.read(buffer, 0, (int) bufferSize);
+            }
+            wr.flush();
+
+            int responseCode = conn.getResponseCode();
+            return getMessageForCode(context, responseCode,
+                    context.getResources().getString(R.string.file_upload_completed_properly));
+
+        } catch (Exception e) {
+            throw e;
+        } finally {
+            if (wr != null)
+                wr.close();
+            if (fis != null)
+                fis.close();
+            if (conn != null)
+                conn.disconnect();
+        }
+    }
 
     /**
      * Download a bitmap from a given url.
@@ -614,6 +619,7 @@ public class NetworkUtilities {
 
         return null;
     }
+
 
     // public static String uploadFile( Context context, String urlStr, File file, String user,
     // String password ) {

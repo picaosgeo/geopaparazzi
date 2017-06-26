@@ -18,29 +18,29 @@
 
 package eu.geopaparazzi.library.util;
 
-import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.net.Uri;
-import android.preference.PreferenceManager;
-import android.support.v4.app.Fragment;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
 import eu.geopaparazzi.library.R;
 import eu.geopaparazzi.library.core.ResourcesManager;
 import eu.geopaparazzi.library.core.activities.DirectoryBrowserActivity;
+import eu.geopaparazzi.library.images.ImageUtilities;
 
 /**
  * An utility to handle 3rd party apps.
  *
  * @author Andrea Antonello (www.hydrologis.com)
+ * @author Cesar Martinez Izquierdo (www.scolab.es)
  */
 public class AppsUtilities {
     public static final String AMAZE_PACKAGE = "com.amaze.filemanager";
@@ -52,11 +52,10 @@ public class AppsUtilities {
      * @param context the context to use.
      */
     public static void checkAndOpenGpsStatus(final Context context) {
-        String gpsStatusAction = "com.eclipsim.gpsstatus.VIEW";
-        String gpsStatusPackage = "com.eclipsim.gpsstatus";
+
+        final String gpsStatusPackage = "com.android.gpstest";
         boolean hasGpsStatus = false;
         List<PackageInfo> installedPackages = new ArrayList<PackageInfo>();
-
         { // try to get the installed packages list. Seems to have troubles over different
             // versions, so trying them all
             try {
@@ -90,8 +89,10 @@ public class AppsUtilities {
         }
 
         if (hasGpsStatus) {
-            Intent intent = new Intent(gpsStatusAction);
-            context.startActivity(intent);
+            Intent launchIntent = context.getPackageManager().getLaunchIntentForPackage(gpsStatusPackage);
+            if (launchIntent != null) {
+                context.startActivity(launchIntent);//null pointer check in case package name was not found
+            }
         } else {
             new AlertDialog.Builder(context).setTitle(context.getString(R.string.installgpsstatus_title))
                     .setMessage(context.getString(R.string.installgpsstatus_message)).setIcon(android.R.drawable.ic_dialog_info)
@@ -102,11 +103,32 @@ public class AppsUtilities {
                     }).setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
                 public void onClick(DialogInterface dialog, int whichButton) {
                     Intent intent = new Intent(Intent.ACTION_VIEW);
-                    intent.setData(Uri.parse("market://search?q=com.eclipsim.gpsstatus2"));
+                    intent.setData(Uri.parse("market://details?id=" + gpsStatusPackage));
                     context.startActivity(intent);
                 }
             }).show();
         }
+    }
+
+    /**
+     * Start a file picking activity.
+     *
+     * @param activityStarter
+     * @param requestCode
+     * @param title
+     * @param filterExtensions
+     * @param startPath
+     * @throws Exception
+     */
+    public static void pickFile(IActivitySupporter activityStarter, int requestCode, String title, String[] filterExtensions, String startPath) throws Exception {
+        if (startPath == null) {
+            startPath = Utilities.getLastFilePath(activityStarter.getContext());
+        }
+
+        Intent browseIntent = new Intent(activityStarter.getContext(), DirectoryBrowserActivity.class);
+        browseIntent.putExtra(DirectoryBrowserActivity.EXTENSIONS, filterExtensions);
+        browseIntent.putExtra(DirectoryBrowserActivity.STARTFOLDERPATH, startPath);
+        activityStarter.startActivityForResult(browseIntent, requestCode);
     }
 
     /**
@@ -127,7 +149,7 @@ public class AppsUtilities {
      * @param mimeType        the mimetype.
      * @param uri             the uri of the start folder.
      */
-    public static void pickFileByExternalBrowser(IActivityStarter activityStarter, int requestCode, String title, String mimeType, Uri uri) {
+    public static void pickFileByExternalBrowser(IActivitySupporter activityStarter, int requestCode, String title, String mimeType, Uri uri) {
         // first try with amaze
         Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
         intent.setPackage(AppsUtilities.AMAZE_PACKAGE);
@@ -159,29 +181,20 @@ public class AppsUtilities {
         }
     }
 
-    /**
-     * Start a file picking activity.
-     *
-     * @param activityStarter
-     * @param requestCode
-     * @param title
-     * @param filterExtensions
-     * @param startPath
-     * @throws Exception
-     */
-    public static void pickFile(IActivityStarter activityStarter, int requestCode, String title, String[] filterExtensions, String startPath) throws Exception {
+    public static void pickFolder(IActivitySupporter activityStarter, int requestCode, String title, String startPath, String[] visibleExtensions) throws Exception {
         if (startPath == null) {
             startPath = Utilities.getLastFilePath(activityStarter.getContext());
         }
 
         Intent browseIntent = new Intent(activityStarter.getContext(), DirectoryBrowserActivity.class);
-        browseIntent.putExtra(DirectoryBrowserActivity.EXTENSIONS, filterExtensions);
+        browseIntent.putExtra(DirectoryBrowserActivity.DOFOLDER, true);
+        browseIntent.putExtra(DirectoryBrowserActivity.EXTENSIONS, visibleExtensions);
         browseIntent.putExtra(DirectoryBrowserActivity.STARTFOLDERPATH, startPath);
         activityStarter.startActivityForResult(browseIntent, requestCode);
     }
 
 
-    public static void checkAmazeExplorer(final IActivityStarter activityStarter) {
+    public static void checkAmazeExplorer(final IActivitySupporter activityStarter) {
         Context context = activityStarter.getContext();
         boolean hasPackage = hasPackage(context, AMAZE_PACKAGE);
 
@@ -234,6 +247,61 @@ public class AppsUtilities {
             hasPackage = true;
         }
         return hasPackage;
+    }
+
+    /**
+     * Show an image through intent.
+     *
+     * @param imageData the image data.
+     * @param imageName the image name.
+     * @param context the context to use.
+     * @throws Exception
+     */
+    public static void showImage(byte[] imageData, String imageName, Context context) throws Exception {
+        File tempDir = ResourcesManager.getInstance(context).getTempDir();
+        String ext = ".jpg";
+        if (imageName.endsWith(".png")) {
+            ext = ".png";
+        }
+        File imageFile = new File(tempDir, ImageUtilities.getTempImageName(ext));
+        ImageUtilities.writeImageDataToFile(imageData, imageFile.getAbsolutePath());
+
+        showImage(imageFile, context);
+    }
+
+    /**
+     * Show and image.
+     *
+     * @param imageFile the image file.
+     * @param context the context to use.
+     * @throws Exception
+     */
+    public static void showImage(File imageFile, Context context) throws Exception {
+        Intent intent = new Intent();
+        intent.setAction(Intent.ACTION_VIEW);
+        Uri uri = Utilities.getFileUriInApplicationFolder(context, imageFile);
+        intent.setDataAndType(uri, "image/*"); //$NON-NLS-1$
+
+        grantPermission(context, intent, uri);
+        context.startActivity(intent);
+    }
+
+
+    /**
+     * Grant permission to access a file from another app.
+     *
+     * <p>This is necessary since Android 7.</p>
+     *
+     * @param context the context.
+     * @param intent the intent.
+     * @param uri the file uri.
+     */
+    public static void grantPermission(Context context, Intent intent, Uri uri) {
+        List<ResolveInfo> resInfoList = context.getPackageManager().queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY);
+        for (ResolveInfo resolveInfo : resInfoList) {
+            String packageName = resolveInfo.activityInfo.packageName;
+            context.grantUriPermission(packageName, uri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        }
     }
 
 }

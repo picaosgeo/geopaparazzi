@@ -36,7 +36,6 @@
   <string name="downloading_projects_list_from_server">Sťahovanie zoznamu projektov zo servera.</string>
   <string name="error_projects_list">Pri získavaní zoznamu projektov sa vyskytla chyba.</string>
   <string name="downloading_project">Sťahovanie projektu...</string>
-  <string name="downloading_project_to_the_device">Sťahovanie vybraného projektu do zariadenia.</string>
   <string name="project_successfully_downloaded">Projekt bol úspešne stiahnutý.</string>
   <string name="proximity_alert">Výstraha priblíženia!</string>
   <string name="approaching_poi">Priblíženie k POI</string>
@@ -49,7 +48,6 @@
   <string name="go_to_button">choď na</string>
   <string name="route_to_button">cesta do</string>
   <string name="route_to">Cesta do:</string>
-  <string name="route_extraction_error">Pri získavaní cesty sa vyskytla chyba.</string>
   <string name="available_only_with_network">Táto funkcia je dostupná iba pri aktívnom sieťovom pripojení.</string>
   <string name="error_while_storing_form_data">Pri ukladaní údajov sa vyskytla chyba.</string>
   <string name="view_routing_url_in_browser">Chcete otvoriť použité URL v prehliadači?</string>

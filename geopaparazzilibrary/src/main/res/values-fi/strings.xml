@@ -34,10 +34,15 @@
   <string name="webprojects_list_title">Lista etäprojekteista</string>
   <string name="downloading">Ladataan...</string>
   <string name="downloading_projects_list_from_server">Ladataan projektilistaus palvelimelta</string>
+  <string name="downloading_layers_list_from_server">Ladataan tasolista palvelimelta.</string>
+  <string name="downloading_data_from_server">Ladataan data palvelimelta.</string>
   <string name="error_projects_list">Tapahtui virhe noudattaessa projektilistausta</string>
+  <string name="error_data_list">Virhe haettaessa data tasojen listaa.</string>
   <string name="downloading_project">Ladataan projektia...</string>
-  <string name="downloading_project_to_the_device">Ladataan valittua projektia laitteelle</string>
+  <string name="downloading_data">Ladataan dataa...</string>
+  <string name="downloading_data_to_the_device">Ladataan valittuja tasoja spatialite tietokantana laitteeseen.</string>
   <string name="project_successfully_downloaded">Projekti on ladattu</string>
+  <string name="data_successfully_downloaded">Data on onnistuneesti ladattu.</string>
   <string name="proximity_alert">Lähestytään kohdetta</string>
   <string name="approaching_poi">Lähestytään POI-pistettä</string>
   <string name="form_field_check">Tarkista, että kentän tiedot \"%1$s\" kohdassa \"%2$s\" ovat kelvollisia. Ei kelvollisia rajoituksia: %3$s.</string>
@@ -50,7 +55,6 @@
   <string name="go_to_button">Mene</string>
   <string name="route_to_button">Reitti</string>
   <string name="route_to">Reitti: </string>
-  <string name="route_extraction_error">Tapahtui virhe reitin purussa.</string>
   <string name="available_only_with_network">Tämä toimintoa voidaan käyttää vain verkkoyhteyden aikana.</string>
   <string name="error_while_storing_form_data">Lomaketietojen tallentamisessa tapahtui virhe.</string>
   <string name="view_routing_url_in_browser">Haluatko avata käytetyn reitin selaimessa?</string>
@@ -107,4 +111,5 @@
   <string name="stroke_color_title">Vahvistusväri</string>
   <string name="stroke_width_title">Vahvistuksen leveys</string>
   <string name="stroke_alpha_title">Alfavahvistus</string>
+  <string name="saving_to_database">Talletetaan dataa tietokantaan...</string>
 </resources>
